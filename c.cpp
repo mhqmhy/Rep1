@@ -15,7 +15,7 @@
 #include <iostream>
 #include <string>
 using namespace std;
-#define N 256
+#define N 4096
  
 typedef struct sockaddr AS;
 /*
@@ -26,24 +26,7 @@ typedef struct sockaddr AS;
 	1.2 报文
  2.返回状态及数据内容
 */
-vector<string> splitString(char str[])
-{
-	const char s[2] = "&";
-  	char *token,*list[100];
-  	vector<string> myList;
-   	int i = 0;   
-	/* 获取第一个子字符串 */
-	token = strtok(str, s);  
-	/* 继续获取其他的子字符串 */
-	while( token != NULL ) {
-	    printf( "token: %s\t", token );   
-	    myList.push_back(token);
-	    cout<<myList[i]<<endl;
-	    i++;
-	    token = strtok(NULL, s);
-	}
-	return myList;
-}
+
 
 struct sockaddr_in taojiekou()
 {
@@ -56,7 +39,7 @@ struct sockaddr_in taojiekou()
     struct sockaddr_in server_addr;
     memset(&server_addr,0,sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(9500);
+    server_addr.sin_port = htons(8000);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     return server_addr;
 }
@@ -65,7 +48,7 @@ int ProcessList(vector<string> &myList,string userName, string loginPassword)
 {
     struct sockaddr_in server_addr = taojiekou();
     int sockfd,nbyte,fd;
-    char *buf;
+    char buf[N],*buff;
     //ip
     if((sockfd = socket(AF_INET,SOCK_STREAM, 0)) < 0){
         printf("fail\n");
@@ -79,13 +62,43 @@ int ProcessList(vector<string> &myList,string userName, string loginPassword)
     
     string baowen = "0"+userName+loginPassword;//0用户名密码文件名
 /*向服务端发送Get命令来获取文件，服务端返回文件是否存在*/
-    buf = (char *)baowen.c_str();
+    buff = (char *)baowen.c_str();
+
+    strcpy(buf,buff);
+
     send(sockfd, buf, N, 0);
+
+    bzero(buf,sizeof(buf));
+
     recv(sockfd, buf, N, 0);
-   
-    // close(fd);
-    // close(sockfd);
-    myList = splitString(buf);
+    
+    int fileCount = *(int*)buf;
+
+    while(fileCount--){
+        bzero(buf,N);
+        strcpy(buf,"1");
+        if( send(sockfd, buf, N ,0) < 0 )
+        {
+            perror("Error1: fail to send!\n");
+			return -1;
+        }
+        bzero(buf,N);
+        if( recv(sockfd,buf,N,0) < 0)
+        {
+            perror("Error1: fail to recv!\n");
+			return -1;
+        }
+       
+        myList.push_back(buf);
+    }
+    
+    for (int i = 0; i < myList.size(); i++)
+    {
+        cout<<myList[i]<<endl;
+    }
+    close(fd);
+    close(sockfd);
+    
     return 0; //successful
 
    
@@ -246,43 +259,56 @@ int ProcessPut(string command,string userName,string loginPassword)
 int main(int argc,char *argv[])
 {
     vector<string> fileList;
+   
     char comm[32];
     PrintHelp();
 
-    ProcessDelete("1.pdf","mhq","123456");
-    ProcessRename("1.pdf","mhq","123456");
-    ProcessList(fileList,"mhq","123456");
-    ProcessPut("1.pdf","mhq","123456");
-    ProcessGet("1.pdf","mhq","123456");
+    // ProcessDelete("1.pdf","mhq","123456");
+    // ProcessRename("1.pdf","mhq","123456");
+    // while(1)
+    // {
+    //     ProcessList(fileList,"A","981122");
+    // }
+     
+    // ProcessPut("1.pdf","mhq","123456");
+    // ProcessGet("1.pdf","mhq","123456");
 
 
 
-//     while(1){
-//      printf(">> ");
-//      fgets(comm,32,stdin);
-//      comm[strlen(comm)-1] = '\0'; 
-//      if(strcmp(comm,"help") == 0){
-//          PrintHelp();
-//      }else if(strncmp(comm,"get ",4) == 0){
-//          ProcessGet(server_addr,comm);
-//      }else if(strncmp(comm,"put ",4) == 0){
-//          ProcessPut(server_addr,comm);
-//      }else if(strcmp(comm,"quit") == 0){
-//          printf("Quit!\n");
-//          break;
-//      }else if(strcmp(comm, "list") == 0){
-//          ProcessList(server_addr,comm,userName,loginPassword);
-//      }
-//      else if(strcmp(comm, "rename") == 0){
-//          ProcessRename(server_addr,comm);
-//      }
-//      else if(strcmp(comm, "delete") == 0){
-//          ProcessDelete(server_addr,comm);
-//      }
-//      else{
-//          printf("warning! Input again.\n");
-//    }
-// }
-
-return 0;
+    while(1){
+     printf(">> ");
+     fgets(comm,32,stdin);
+     comm[strlen(comm)-1] = '\0'; 
+     switch (comm[0])
+     {
+     case '0':
+       
+        ProcessList(fileList,"A","981122");
+        break;
+    case '1':
+        
+        ProcessPut("1.pdf","A","981122");
+        break;
+    case '2':
+       
+        ProcessGet("1.pdf","A","981122");
+        break;
+    case '3':
+       
+        ProcessDelete("1.pdf","A","981122");
+        break;
+    case '4':
+       
+        ProcessRename("1.pdf","A","981122");
+        break;
+     
+     default:
+      
+        printf("warning! Input again.\n");
+        break;
+     }   
+     if(comm[0] = 'q')
+        break;  
+   }
+    return 0;
 }
